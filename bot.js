@@ -28,12 +28,11 @@ let filaAtiva = false;
 
 // Fila e cooldowns
 let fila = [];
-const cooldownGlobal = 10 * 60 * 1000; // 10 minutos
-const cooldownUsuario = 10 * 60 * 1000; // 10 minutos
+const cooldownGlobal = 10 * 60 * 1000;
+const cooldownUsuario = 10 * 60 * 1000;
 let ultimoProcessamento = 0;
-const cooldowns = {}; // { username: timestamp }
+const cooldowns = {};
 
-// Usuários que já perguntaram na live
 let usuariosNaLive = new Set();
 
 // Verifica se é mod ou streamer
@@ -73,7 +72,7 @@ function processarFila() {
     });
 }
 
-setInterval(processarFila, 5000); // Verifica a cada 5s
+setInterval(processarFila, 5000);
 
 // Conexão e mensagens
 client.on('message', (channel, tags, message, self) => {
@@ -83,7 +82,6 @@ client.on('message', (channel, tags, message, self) => {
     const texto = message.trim().toLowerCase();
     console.log(`[${channel}] ${usuario}: ${message}`);
 
-    // Comandos especiais (mod/streamer)
     if (texto.startsWith('!liberar') && isModOrStreamer(tags)) {
         botAtivo = true;
         modo = 0;
@@ -130,7 +128,6 @@ client.on('message', (channel, tags, message, self) => {
         return;
     }
 
-    // Comandos de controle da fila
     if (texto === '!filabot on' && isModOrStreamer(tags)) {
         filaAtiva = true;
         client.say(channel, '✅ Sistema de fila ativado! Use !ia para enviar suas perguntas.');
@@ -149,7 +146,6 @@ client.on('message', (channel, tags, message, self) => {
         return;
     }
 
-    // Processa perguntas
     if (texto.startsWith('!ia') && texto.length > 4) {
         if (!botAtivo) {
             client.say(channel, `⛔ O bot está inativo no momento. Aguarde a liberação!`);
@@ -159,15 +155,18 @@ client.on('message', (channel, tags, message, self) => {
         const agora = Date.now();
         const pergunta = texto.slice(3).trim();
 
-        // Se a fila estiver ativa, aplica regras de fila
-        if (filaAtiva) {
-            if (cooldowns[usuario] && agora - cooldowns[usuario] < cooldownUsuario) {
+        if (filaAtiva && modo !== 2) {
+            if (modo === 1 && usuariosNaLive.has(usuario)) {
+                client.say(channel, `🚫 @${usuario}, no modo competição só é permitida uma pergunta por pessoa.`);
+                return;
+            }
+
+            if (modo !== 2 && cooldowns[usuario] && agora - cooldowns[usuario] < cooldownUsuario) {
                 const tempoRestante = Math.ceil((cooldowns[usuario] + cooldownUsuario - agora) / 60000);
                 client.say(channel, `⏳ @${usuario}, você deve esperar mais ${tempoRestante} min para perguntar novamente.`);
                 return;
             }
 
-            // Prioridade: quem já perguntou antes vai para o fim
             const prioridade = usuariosNaLive.has(usuario) ? 1 : 0;
             usuariosNaLive.add(usuario);
 
@@ -179,15 +178,16 @@ client.on('message', (channel, tags, message, self) => {
 
             client.say(channel, `📥 @${usuario}, sua pergunta foi adicionada à fila!`);
         } else {
-            // Fila desativada → envia direto, respeitando cooldown global
-            if (Date.now() - ultimoProcessamento < cooldownGlobal) {
+            if (modo !== 2 && Date.now() - ultimoProcessamento < cooldownGlobal) {
                 const tempoRestante = Math.ceil((ultimoProcessamento + cooldownGlobal - Date.now()) / 60000);
                 client.say(channel, `🕒 Aguarde ${tempoRestante} min antes de enviar nova pergunta.`);
                 return;
             }
 
-            ultimoProcessamento = agora;
-            cooldowns[usuario] = agora;
+            if (modo !== 2) {
+                ultimoProcessamento = agora;
+                cooldowns[usuario] = agora;
+            }
 
             const data = {
                 username: usuario,
