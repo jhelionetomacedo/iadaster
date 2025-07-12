@@ -11,15 +11,15 @@ const client = new tmi.Client({
         reconnect: true
     },
     identity: {
-        username: 'ia',
-        password: 'oauth:gy0ghzmozwa5vfi9k4m8mp9fckijhs'
+        username: process.env.TWITCH_USERNAME,
+        password: process.env.TWITCH_OAUTH
     },
-    channels: ['sterb7']
+    channels: [process.env.TWITCH_CHANNEL]
 });
 
 client.connect();
 
-const webhookUrl = 'https://hook.us2.make.com/po1c5h1bti4u34tl3965uyi785kvmrrr';
+const webhookUrl = process.env.WEBHOOK_URL;
 
 // Estados do bot
 let botAtivo = false;
