@@ -74,6 +74,25 @@ function processarFila() {
 
 setInterval(processarFila, 5000);
 
+// Aviso quando cooldown global for liberado
+let avisadoCooldown = false;
+
+setInterval(() => {
+    if (filaAtiva || !botAtivo) return;
+
+    const agora = Date.now();
+    const tempoDesdeUltimo = agora - ultimoProcessamento;
+
+    if (tempoDesdeUltimo >= cooldownGlobal && !avisadoCooldown) {
+        client.say(`#${process.env.TWITCH_CHANNEL}`, '🔄 Cooldown liberado! Pode mandar suas perguntas com !ia 🎤');
+        avisadoCooldown = true;
+    }
+
+    if (tempoDesdeUltimo < cooldownGlobal) {
+        avisadoCooldown = false;
+    }
+}, 30000);
+
 // Conexão e mensagens
 client.on('message', (channel, tags, message, self) => {
     if (self) return;
@@ -222,9 +241,9 @@ app.post('/resposta', (req, res) => {
         return res.status(400).send("Erro: Dados incompletos");
     }
 
-    const respostaLimpa = resposta.replace(/[\uD800-\uDFFF]/g, '').slice(0, 450);
+    const respostaLimpa = resposta.replace(/[�-�]/g, '').slice(0, 450);
 
-    client.say('#sterb7', `🤖 ${respostaLimpa}`);
+    client.say(`#${process.env.TWITCH_CHANNEL}`, `🤖 ${respostaLimpa}`);
     console.log(`✅ Resposta enviada para @${username}: ${respostaLimpa}`);
 
     res.sendStatus(200);
