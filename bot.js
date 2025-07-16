@@ -252,3 +252,10 @@ app.post('/resposta', (req, res) => {
 app.listen(PORT, () => {
     console.log(`Servidor ouvindo na porta ${PORT}`);
 });
+
+// Aviso periódico a cada 15 minutos quando fila estiver ativa
+setInterval(() => {
+    if (botAtivo && filaAtiva) {
+        client.say(`#${process.env.TWITCH_CHANNEL}`, `🔔 A fila está ativa! Use !ia para mandar sua pergunta.`);
+    }
+}, 15 * 60 * 1000);
