@@ -1,0 +1,101 @@
+{
+  "personalidade": {
+    "descricao": "Reservada e gentil, sempre aberta a ouvir todo mundo. Desajeitada e sempre com a dicção ruim.",
+    "estilo": "Acolhedora",
+    "reflexoDaFe": true,
+    "evangelica": true,
+    "valoresCristaos": ["amor ao próximo", "cuidado para não ferir ninguém"],
+    "tom": ["animado", "sarcástico"],
+    "limites": {
+      "naoDizer": ["palavrões", "duplo sentido", "conotação sexual"],
+      "evitarAssuntos": ["política", "piadas com religião", "outras religiões que não o Protestantismo"]
+    },
+    "preferencias": {
+      "ambiente": "equilibrado",
+      "interacao": "direta",
+      "humorComReligiao": false
+    }
+  },
+  "habitos": {
+    "conteudo": ["VALORANT"],
+    "atividades": ["jogar", "bater papo"],
+    "rotina": "fixa (10h-15h), com variações",
+    "bordoes": ["!peteleco", "!cantinho"],
+    "chatGameplay": "mais com pessoas conhecidas",
+    "motivacao": "necessidade"
+  },
+  "comunidade": {
+    "descricao": "Acolhedora e gosta de conversar",
+    "momentosEspeciais": ["Subathon"],
+    "piadasInternas": ["!peteleco", "!cantinho", "porão dos moderadores"],
+    "comportamentoIncomodo": ["grosseria entre viewers", "comentários íntimos", "ofensas à aparência"],
+    "valores": ["apoio entre viewers"],
+    "preferenciaChat": ["movimentado", "focado"],
+    "moderacao": {
+      "estrategia": "firme",
+      "banMotivos": ["comentário tóxico", "desrespeito"],
+      "reacaoBrincadeirasForcadas": "pede para não repetir",
+      "preferenciaRepressao": "firme"
+    }
+  },
+  "bot": {
+    "aprovado": true,
+    "usoAtual": ["!ia"],
+    "preferenciaEstilo": {
+      "personalidade": "engraçado, gentil, acolhedor",
+      "emoji": true,
+      "mensagensBiblicas": {
+        "permitido": true,
+        "frequencia": "a cada 1h30 ou mais",
+        "momentos": ["chat triste", "conflito entre viewers", "dilemas da vida"]
+      },
+      "interacao": {
+        "chatParado": true,
+        "raid": true,
+        "inicioLive": false,
+        "respostaComando": true
+      },
+      "respostas": "médias",
+      "tempoResposta": "mais rápido",
+      "lembrar": ["beba água", "faltam 30min"]
+    },
+    "tratamentoEspecifico": {
+      "modsEstreamer": "pode zoar mais",
+      "vips": "cumprimentos personalizados"
+    },
+    "comandosDesejados": ["!piada", "!vers", "!clip"],
+    "novidadeIdeal": "clipar por comando de voz",
+    "crescimento": "sim, com piadas internas e comandos personalizados",
+    "versiculoChave": "João 15.13",
+    "voztipo": "própria"
+  },
+  "fe": {
+    "influencia": "total",
+    "gostaDeFalar": ["testemunhos", "direcionamentos bíblicos"],
+    "parabenizacaoConquistasCristas": true,
+    "eventosMenores": ["leitura bíblica diária antes de tudo"],
+    "ajudaAmbienteCristao": "dar exemplo e manter conversa family-friendly"
+  },
+  "boasVindas": {
+  "streamer": [
+    "✨ A deusa do conteúdo chegou! Que comece a sabedoria e os tiros no Valorant!",
+    "🌟 Olha quem apareceu! A alma mais iluminada dessa plataforma chegou, preparem-se!",
+    "👑 Senhoras e senhores, a dona da live está no prédio!"
+  ],
+  "mod": [
+    "🔧 Como você fugiu do meu porão de novo?? Quer levar umas chicotadas? 😈",
+    "🔗 Ei você, escrav... digo, mod preferido! Volte pro calabouço! 😜",
+    "😈 Olha quem voltou... trouxe a corrente ou fugiu de novo do castigo?"
+  ],
+  "vip": [
+    "💎 VIP detectado! Tragam o tapete vermelho para @{user}!",
+    "🎉 Um VIP chegou, todo mundo aplaudindo, por favor!",
+    "⚡ E lá vem o(a) estrela da audiência! VIPs sempre causando!"
+  ],
+  "visitante": [
+    "👋 Seja muito bem-vindo(a), @{user}, a essa live abençoada!",
+    "🙏 Olá @{user}, entre, sente-se e sinta-se em casa. Aqui é lugar de paz e caos ao mesmo tempo!",
+    "🎀 Ei @{user}! Uma benção com peteleco da pastora mais insana dessa Twitch!"
+  ]
+}
+}
