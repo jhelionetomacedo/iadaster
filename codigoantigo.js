@@ -1,3 +1,6 @@
+// ====================
+// Importações e setup
+// ====================
 const tmi = require('tmi.js');
 const request = require('request');
 const express = require('express');
@@ -18,7 +21,7 @@ try {
 }
 
 // ====================
-// Carregar palavras proibidas
+// Carregar palavras proibidas com níveis
 // ====================
 let palavrasProibidas = {
     palavroes: [],
@@ -40,73 +43,95 @@ try {
 // ====================
 const client = new tmi.Client({
     options: { debug: true },
-    connection: {
-        secure: true,
-        reconnect: true
-    },
+    connection: { secure: true, reconnect: true },
     identity: {
         username: process.env.TWITCH_USERNAME,
         password: process.env.TWITCH_OAUTH
     },
     channels: [process.env.TWITCH_CHANNEL]
 });
-
 client.connect();
 
+// ====================
+// Variáveis de estado
+// ====================
 const webhookUrl = process.env.WEBHOOK_URL;
-
-// ====================
-// Estados do bot
-// ====================
 let botAtivo = false;
 let modo = 0;
 let filaAtiva = false;
 let fila = [];
+let usuariosNaLive = new Set();
+let avisadoCooldown = false;
 const cooldownGlobal = 10 * 60 * 1000;
 const cooldownUsuario = 10 * 60 * 1000;
 let ultimoProcessamento = 0;
 const cooldowns = {};
-let usuariosNaLive = new Set();
-let avisadoCooldown = false;
 
 // ====================
-// Verifica se é mod ou streamer
+// Funções utilitárias
 // ====================
 function isModOrStreamer(tags) {
     return tags.mod || tags.badges?.broadcaster === '1';
-}
-
-// ====================
-// Mensagens de boas-vindas
-// ====================
-function boasVindas(tags) {
-    const user = tags.username;
-
-    if (tags.badges?.broadcaster === '1') {
-        const msgs = perfilStreamer.boasVindas?.streamer || [];
-        return escolhaAleatoria(msgs).replace('${user}', user);
-    }
-
-    if (tags.mod) {
-        const msgs = perfilStreamer.boasVindas?.mod || [];
-        return escolhaAleatoria(msgs).replace('${user}', user);
-    }
-
-    if (tags.badges?.vip === '1') {
-        const msgs = perfilStreamer.boasVindas?.vip || [];
-        return escolhaAleatoria(msgs).replace('${user}', user);
-    }
-
-    const msgs = perfilStreamer.boasVindas?.visitante || [];
-    return escolhaAleatoria(msgs).replace('${user}', user);
 }
 
 function escolhaAleatoria(lista) {
     return lista[Math.floor(Math.random() * lista.length)];
 }
 
+function boasVindas(tags) {
+    const user = tags.username;
+
+    if (tags.badges?.broadcaster === '1') return escolhaAleatoria(perfilStreamer.boasVindas?.streamer || []).replace('${user}', user);
+    if (tags.mod) return escolhaAleatoria(perfilStreamer.boasVindas?.mod || []).replace('${user}', user);
+    if (tags.badges?.vip === '1') return escolhaAleatoria(perfilStreamer.boasVindas?.vip || []).replace('${user}', user);
+
+    return escolhaAleatoria(perfilStreamer.boasVindas?.visitante || []).replace('${user}', user);
+}
+
 // ====================
-// Processa a fila automaticamente
+// Sistema de moderação
+// ====================
+function verificarPalavrasProibidas(message) {
+    const texto = message.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '').trim();
+
+    const categorias = [
+        { lista: palavrasProibidas.palavroes, nivel: 0 },
+        { lista: palavrasProibidas.sexuais, nivel: 1 },
+        { lista: palavrasProibidas.alerta_contextual, nivel: 2 },
+        { lista: palavrasProibidas.odio_e_discriminacao, nivel: 3 }
+    ];
+
+    for (const categoria of categorias) {
+        for (const palavra of categoria.lista) {
+            const regex = new RegExp(`\\b${palavra}\\b`, 'i');
+            if (regex.test(texto)) return categoria.nivel;
+        }
+    }
+
+    return null;
+}
+
+function aplicarMedidaModeracao(nivel, usuario, canal) {
+    switch (nivel) {
+        case 0:
+            client.say(canal, `⚠️ @${usuario}, evite usar essas palavras, tá bom? Mantenha o respeito no chat 😊`);
+            break;
+        case 1:
+            client.say(canal, `📢 @${usuario}, por favor, vamos manter a conversa saudável. Palavras assim não combinam com a live 🙏`);
+            break;
+        case 2:
+            client.say(canal, `⏰ @${usuario}, linguagem inapropriada! Você recebeu um tempo para pensar melhor no que escrever.`);
+            client.timeout(canal, usuario, 300, "Linguagem inadequada");
+            break;
+        case 3:
+            client.say(canal, `🚫 @${usuario}, discurso de ódio não será tolerado. Você foi banido.`);
+            client.ban(canal, usuario, "Discurso de ódio");
+            break;
+    }
+}
+
+// ====================
+// Processar fila
 // ====================
 function processarFila() {
     const agora = Date.now();
@@ -128,28 +153,25 @@ function processarFila() {
         else console.log(`✅ Pergunta de ${username} enviada (fila)!`);
     });
 }
-
 setInterval(processarFila, 5000);
 
 // ====================
-// Aviso quando cooldown global for liberado
+// Mensagem de cooldown global
 // ====================
 setInterval(() => {
     if (filaAtiva || !botAtivo) return;
 
     const agora = Date.now();
-    const tempoDesdeUltimo = agora - ultimoProcessamento;
-
-    if (tempoDesdeUltimo >= cooldownGlobal && !avisadoCooldown) {
+    if (agora - ultimoProcessamento >= cooldownGlobal && !avisadoCooldown) {
         client.say(`#${process.env.TWITCH_CHANNEL}`, '🔄 Cooldown liberado! Pode mandar suas perguntas com !ia 🎤');
         avisadoCooldown = true;
-    } else if (tempoDesdeUltimo < cooldownGlobal) {
+    } else if (agora - ultimoProcessamento < cooldownGlobal) {
         avisadoCooldown = false;
     }
 }, 30000);
 
 // ====================
-// Conexão e mensagens
+// OnMessage principal
 // ====================
 client.on('message', (channel, tags, message, self) => {
     if (self) return;
@@ -158,24 +180,11 @@ client.on('message', (channel, tags, message, self) => {
     const texto = message.trim().toLowerCase();
     console.log(`[${channel}] ${usuario}: ${message}`);
 
-    // Verificar palavras proibidas
-    const todasPalavrasProibidas = [
-        ...palavrasProibidas.palavroes,
-        ...palavrasProibidas.sexuais,
-        ...palavrasProibidas.odio_e_discriminacao,
-        ...palavrasProibidas.alerta_contextual
-    ];
-
-    const mensagemSemPontuacao = message.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '').trim();
-
-    const encontrouPalavraProibida = todasPalavrasProibidas.some(palavra => {
-        const regex = new RegExp(`\\b${palavra}\\b`, 'i');
-        return regex.test(mensagemSemPontuacao);
-    });
-
-    if (encontrouPalavraProibida) {
-        client.say(channel, `🚫 @${usuario}, cuidado com o que você diz! Essa linguagem não é permitida aqui.`);
-        console.log(`⚠️ Mensagem com palavra proibida detectada de ${usuario}: "${message}"`);
+    // Moderar
+    const nivel = verificarPalavrasProibidas(message);
+    if (nivel !== null) {
+        aplicarMedidaModeracao(nivel, usuario, channel);
+        console.log(`⚠️ Palavra proibida detectada no nível ${nivel}: ${message}`);
         return;
     }
 
@@ -211,7 +220,7 @@ client.on('message', (channel, tags, message, self) => {
         }
         return;
     }
-    if (texto.startsWith('!status') && isModOrStreamer(tags)) {
+    if (texto === '!status' && isModOrStreamer(tags)) {
         const statusStr = botAtivo ? "Ativo ✅" : "Inativo ❌";
         const modos = ['Normal', 'Competição', 'Corrida'];
         const filaStatus = filaAtiva ? "ativada ✅" : "desativada ❌";

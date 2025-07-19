@@ -1,12 +1,13 @@
 {
   "name": "iadochat",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Bot de moderação e interação para Twitch com sistema de reincidência e mensagens personalizadas.",
+  "main": "bot.js",
   "scripts": {
+    "start": "node bot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["twitch", "bot", "moderacao", "chat", "tmi.js", "express"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
