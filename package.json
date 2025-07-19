@@ -7,12 +7,20 @@
     "start": "node bot.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["twitch", "bot", "moderacao", "chat", "tmi.js", "express"],
+  "keywords": [
+    "twitch",
+    "bot",
+    "moderacao",
+    "chat",
+    "tmi.js",
+    "express"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "body-parser": "^2.2.0",
+    "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "irc": "^0.5.2",
     "request": "^2.88.2",
