@@ -51,6 +51,24 @@ try {
 }
 
 // ====================
+// Carregar usuários que já receberam boas-vindas
+// ====================
+let usuariosBoasVindas = {};
+const caminhoBoasVindas = './usuarios_boasvindas.json';
+
+try {
+    if (fs.existsSync(caminhoBoasVindas)) {
+        usuariosBoasVindas = JSON.parse(fs.readFileSync(caminhoBoasVindas, 'utf8'));
+    }
+} catch (error) {
+    console.error('❌ Erro ao carregar usuários de boas-vindas:', error);
+}
+
+function salvarUsuariosBoasVindas() {
+    fs.writeFileSync(caminhoBoasVindas, JSON.stringify(usuariosBoasVindas, null, 2));
+}
+
+// ====================
 // Configurações do Twitch
 // ====================
 const client = new tmi.Client({
@@ -92,22 +110,21 @@ function escolhaAleatoria(lista) {
     return lista[Math.floor(Math.random() * lista.length)];
 }
 
-function boasVindas(tags) {
-    const user = tags.username;
+function boasVindas(tags, username) {
     if (tags.badges?.broadcaster === '1') {
         const msgs = perfilStreamer.boasVindas?.streamer || [];
-        return escolhaAleatoria(msgs).replace('${user}', user);
+        return escolhaAleatoria(msgs).replace(/\${user}/g, `@${username}`);
     }
     if (tags.mod) {
         const msgs = perfilStreamer.boasVindas?.mod || [];
-        return escolhaAleatoria(msgs).replace('${user}', user);
+        return escolhaAleatoria(msgs).replace(/\${user}/g, `@${username}`);
     }
     if (tags.badges?.vip === '1') {
         const msgs = perfilStreamer.boasVindas?.vip || [];
-        return escolhaAleatoria(msgs).replace('${user}', user);
+        return escolhaAleatoria(msgs).replace(/\${user}/g, `@${username}`);
     }
     const msgs = perfilStreamer.boasVindas?.visitante || [];
-    return escolhaAleatoria(msgs).replace('${user}', user);
+    return escolhaAleatoria(msgs).replace(/\${user}/g, `@${username}`);
 }
 
 function salvarReincidentes() {
@@ -130,6 +147,17 @@ function aplicarPenalidade(channel, username, nivel) {
         default:
             client.say(channel, `🔎 Moderação, fiquem atentos: @${username} atingiu o limite de advertências.`);
     }
+}
+
+function saudouHoje(usuario) {
+    const hoje = new Date().toISOString().split('T')[0]; // formato: '2025-07-21'
+    return usuariosBoasVindas[usuario] === hoje;
+}
+
+function registrarSaudacao(usuario) {
+    const hoje = new Date().toISOString().split('T')[0];
+    usuariosBoasVindas[usuario] = hoje;
+    salvarUsuariosBoasVindas();
 }
 
 // ====================
@@ -201,12 +229,23 @@ client.on('message', (channel, tags, message, self) => {
         return;
     }
 
-    // Boas-vindas
-    if (!usuariosNaLive.has(usuario)) {
-        usuariosNaLive.add(usuario);
-        const msg = boasVindas(tags);
-        if (msg) client.say(channel, msg);
-    }
+    // Boas-vindas para primeira visita absoluta
+   const isStreamer = tags.badges?.broadcaster === '1';
+const isMod = tags.mod;
+const isVip = tags.badges?.vip === '1';
+const isVisitante = !isStreamer && !isMod && !isVip;
+
+if (
+    (isStreamer || isMod || isVip) && !saudouHoje(usuario)
+) {
+    registrarSaudacao(usuario);
+    const msg = boasVindas(tags, usuario);
+    if (msg) client.say(channel, msg);
+} else if (isVisitante && !usuariosBoasVindas[usuario]) {
+    registrarSaudacao(usuario);
+    const msg = boasVindas(tags, usuario);
+    if (msg) client.say(channel, msg);
+}
 
     // Comandos para mods
     if (texto.startsWith('!liberar') && isModOrStreamer(tags)) {
