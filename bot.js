@@ -36,14 +36,26 @@ try {
 }
 
 // ====================
+// Carregar reincidência
+// ====================
+let reincidentes = {};
+const caminhoReincidentes = './usuarios_reincidentes.json';
+
+try {
+    if (fs.existsSync(caminhoReincidentes)) {
+        reincidentes = JSON.parse(fs.readFileSync(caminhoReincidentes, 'utf8'));
+        console.log('📁 Dados de reincidência carregados.');
+    }
+} catch (error) {
+    console.error('❌ Erro ao carregar reincidência:', error);
+}
+
+// ====================
 // Configurações do Twitch
 // ====================
 const client = new tmi.Client({
     options: { debug: true },
-    connection: {
-        secure: true,
-        reconnect: true
-    },
+    connection: { secure: true, reconnect: true },
     identity: {
         username: process.env.TWITCH_USERNAME,
         password: process.env.TWITCH_OAUTH
@@ -56,7 +68,7 @@ client.connect();
 const webhookUrl = process.env.WEBHOOK_URL;
 
 // ====================
-// Estados do bot
+// Estados
 // ====================
 let botAtivo = false;
 let modo = 0;
@@ -70,43 +82,58 @@ let usuariosNaLive = new Set();
 let avisadoCooldown = false;
 
 // ====================
-// Verifica se é mod ou streamer
+// Helpers
 // ====================
 function isModOrStreamer(tags) {
     return tags.mod || tags.badges?.broadcaster === '1';
-}
-
-// ====================
-// Mensagens de boas-vindas
-// ====================
-function boasVindas(tags) {
-    const user = tags.username;
-
-    if (tags.badges?.broadcaster === '1') {
-        const msgs = perfilStreamer.boasVindas?.streamer || [];
-        return escolhaAleatoria(msgs).replace('${user}', user);
-    }
-
-    if (tags.mod) {
-        const msgs = perfilStreamer.boasVindas?.mod || [];
-        return escolhaAleatoria(msgs).replace('${user}', user);
-    }
-
-    if (tags.badges?.vip === '1') {
-        const msgs = perfilStreamer.boasVindas?.vip || [];
-        return escolhaAleatoria(msgs).replace('${user}', user);
-    }
-
-    const msgs = perfilStreamer.boasVindas?.visitante || [];
-    return escolhaAleatoria(msgs).replace('${user}', user);
 }
 
 function escolhaAleatoria(lista) {
     return lista[Math.floor(Math.random() * lista.length)];
 }
 
+function boasVindas(tags) {
+    const user = tags.username;
+    if (tags.badges?.broadcaster === '1') {
+        const msgs = perfilStreamer.boasVindas?.streamer || [];
+        return escolhaAleatoria(msgs).replace('${user}', user);
+    }
+    if (tags.mod) {
+        const msgs = perfilStreamer.boasVindas?.mod || [];
+        return escolhaAleatoria(msgs).replace('${user}', user);
+    }
+    if (tags.badges?.vip === '1') {
+        const msgs = perfilStreamer.boasVindas?.vip || [];
+        return escolhaAleatoria(msgs).replace('${user}', user);
+    }
+    const msgs = perfilStreamer.boasVindas?.visitante || [];
+    return escolhaAleatoria(msgs).replace('${user}', user);
+}
+
+function salvarReincidentes() {
+    fs.writeFileSync(caminhoReincidentes, JSON.stringify(reincidentes, null, 2));
+}
+
+function aplicarPenalidade(channel, username, nivel) {
+    switch (nivel) {
+        case 1:
+            client.say(channel, `⚠️ @${username}, essa linguagem não é bem-vinda aqui. Por favor, respeite o ambiente.`);
+            break;
+        case 2:
+            client.timeout(channel, username, 60, "Comportamento inadequado");
+            client.say(channel, `🚫 @${username}, você foi silenciado por 1 minuto por linguagem imprópria.`);
+            break;
+        case 3:
+            client.timeout(channel, username, 300, "Reincidência de comportamento inadequado");
+            client.say(channel, `⏰ @${username}, você foi silenciado por 5 minutos por repetição de comportamento inadequado.`);
+            break;
+        default:
+            client.say(channel, `🔎 Moderação, fiquem atentos: @${username} atingiu o limite de advertências.`);
+    }
+}
+
 // ====================
-// Processa a fila automaticamente
+// Fila automática
 // ====================
 function processarFila() {
     const agora = Date.now();
@@ -132,14 +159,12 @@ function processarFila() {
 setInterval(processarFila, 5000);
 
 // ====================
-// Aviso quando cooldown global for liberado
+// Cooldown global liberado
 // ====================
 setInterval(() => {
     if (filaAtiva || !botAtivo) return;
-
     const agora = Date.now();
     const tempoDesdeUltimo = agora - ultimoProcessamento;
-
     if (tempoDesdeUltimo >= cooldownGlobal && !avisadoCooldown) {
         client.say(`#${process.env.TWITCH_CHANNEL}`, '🔄 Cooldown liberado! Pode mandar suas perguntas com !ia 🎤');
         avisadoCooldown = true;
@@ -149,7 +174,7 @@ setInterval(() => {
 }, 30000);
 
 // ====================
-// Conexão e mensagens
+// Mensagens e comandos
 // ====================
 client.on('message', (channel, tags, message, self) => {
     if (self) return;
@@ -158,24 +183,21 @@ client.on('message', (channel, tags, message, self) => {
     const texto = message.trim().toLowerCase();
     console.log(`[${channel}] ${usuario}: ${message}`);
 
-    // Verificar palavras proibidas
-    const todasPalavrasProibidas = [
+    // Palavras proibidas
+    const todas = [
         ...palavrasProibidas.palavroes,
         ...palavrasProibidas.sexuais,
         ...palavrasProibidas.odio_e_discriminacao,
         ...palavrasProibidas.alerta_contextual
     ];
+    const textoLimpo = message.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '').trim();
 
-    const mensagemSemPontuacao = message.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '').trim();
+    const palavraDetectada = todas.some(p => new RegExp(`\\b${p}\\b`, 'i').test(textoLimpo));
 
-    const encontrouPalavraProibida = todasPalavrasProibidas.some(palavra => {
-        const regex = new RegExp(`\\b${palavra}\\b`, 'i');
-        return regex.test(mensagemSemPontuacao);
-    });
-
-    if (encontrouPalavraProibida) {
-        client.say(channel, `🚫 @${usuario}, cuidado com o que você diz! Essa linguagem não é permitida aqui.`);
-        console.log(`⚠️ Mensagem com palavra proibida detectada de ${usuario}: "${message}"`);
+    if (palavraDetectada) {
+        reincidentes[usuario] = (reincidentes[usuario] || 0) + 1;
+        salvarReincidentes();
+        aplicarPenalidade(channel, usuario, reincidentes[usuario]);
         return;
     }
 
@@ -186,7 +208,7 @@ client.on('message', (channel, tags, message, self) => {
         if (msg) client.say(channel, msg);
     }
 
-    // Comandos administrativos
+    // Comandos para mods
     if (texto.startsWith('!liberar') && isModOrStreamer(tags)) {
         botAtivo = true; modo = 0; usuariosNaLive = new Set();
         client.say(channel, '🔓 O bot foi liberado e está no modo normal (0)!');
@@ -206,16 +228,16 @@ client.on('message', (channel, tags, message, self) => {
         const novoModo = parseInt(texto.split(' ')[1]);
         if ([0, 1, 2].includes(novoModo)) {
             modo = novoModo;
-            const nomesModos = ['Normal', 'Competição', 'Corrida'];
-            client.say(channel, `🎯 Modo ${modo} (${nomesModos[modo]}) ativado!`);
+            const nomes = ['Normal', 'Competição', 'Corrida'];
+            client.say(channel, `🎯 Modo ${modo} (${nomes[modo]}) ativado!`);
         }
         return;
     }
     if (texto.startsWith('!status') && isModOrStreamer(tags)) {
-        const statusStr = botAtivo ? "Ativo ✅" : "Inativo ❌";
+        const status = botAtivo ? "Ativo ✅" : "Inativo ❌";
         const modos = ['Normal', 'Competição', 'Corrida'];
         const filaStatus = filaAtiva ? "ativada ✅" : "desativada ❌";
-        client.say(channel, `📊 Status: ${statusStr} | Modo: ${modo} (${modos[modo]}) | Fila: ${filaStatus}`);
+        client.say(channel, `📊 Status: ${status} | Modo: ${modo} (${modos[modo]}) | Fila: ${filaStatus}`);
         return;
     }
     if (texto === '!filabot on' && isModOrStreamer(tags)) {
@@ -234,7 +256,7 @@ client.on('message', (channel, tags, message, self) => {
         return;
     }
 
-    // Comando !ia
+    // !ia
     if (texto.startsWith('!ia') && texto.length > 4) {
         if (!botAtivo) {
             client.say(channel, `⛔ O bot está inativo no momento. Aguarde a liberação!`);
@@ -249,9 +271,9 @@ client.on('message', (channel, tags, message, self) => {
                 client.say(channel, `🚫 @${usuario}, no modo competição só é permitida uma pergunta por pessoa.`);
                 return;
             }
-            if (modo !== 2 && cooldowns[usuario] && agora - cooldowns[usuario] < cooldownUsuario) {
-                const tempoRestante = Math.ceil((cooldowns[usuario] + cooldownUsuario - agora) / 60000);
-                client.say(channel, `⏳ @${usuario}, você deve esperar mais ${tempoRestante} min para perguntar novamente.`);
+            if (cooldowns[usuario] && agora - cooldowns[usuario] < cooldownUsuario) {
+                const tempo = Math.ceil((cooldowns[usuario] + cooldownUsuario - agora) / 60000);
+                client.say(channel, `⏳ @${usuario}, espere ${tempo} min para perguntar novamente.`);
                 return;
             }
 
@@ -260,8 +282,8 @@ client.on('message', (channel, tags, message, self) => {
             client.say(channel, `📥 @${usuario}, sua pergunta foi adicionada à fila!`);
         } else {
             if (modo !== 2 && Date.now() - ultimoProcessamento < cooldownGlobal) {
-                const tempoRestante = Math.ceil((ultimoProcessamento + cooldownGlobal - agora) / 60000);
-                client.say(channel, `🕒 Aguarde ${tempoRestante} min antes de enviar nova pergunta.`);
+                const tempo = Math.ceil((ultimoProcessamento + cooldownGlobal - agora) / 60000);
+                client.say(channel, `🕒 Aguarde ${tempo} min antes de nova pergunta.`);
                 return;
             }
 
