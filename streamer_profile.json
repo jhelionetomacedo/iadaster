@@ -88,14 +88,14 @@
     "😈 Olha quem voltou... trouxe a corrente ou fugiu de novo do castigo?"
   ],
   "vip": [
-    "💎 VIP detectado! Tragam o tapete vermelho para @{user}!",
+    "💎 VIP detectado! Tragam o tapete vermelho para ele(a)!",
     "🎉 Um VIP chegou, todo mundo aplaudindo, por favor!",
     "⚡ E lá vem o(a) estrela da audiência! VIPs sempre causando!"
   ],
   "visitante": [
-    "👋 Seja muito bem-vindo(a), @{user}, a essa live abençoada!",
-    "🙏 Olá @{user}, entre, sente-se e sinta-se em casa. Aqui é lugar de paz e caos ao mesmo tempo!",
-    "🎀 Ei @{user}! Uma benção com peteleco da streamer abençoada mais insana dessa Twitch!"
+    "👋 Seja muito bem-vindo(a), a essa live abençoada!",
+    "🙏 Olá, entre, sente-se e sinta-se em casa. Aqui é lugar de paz e caos ao mesmo tempo!",
+    "🎀 Ei! Uma benção com peteleco da streamer abençoada mais insana dessa Twitch!"
   ]
 }
 }
